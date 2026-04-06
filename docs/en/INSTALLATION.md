@@ -45,7 +45,7 @@ nslookup -version
 
 ```bash
 cd /opt
-sudo git clone https://github.com/OWNER/speedbox.git
+sudo git clone https://github.com/dashand/speedbox.git
 sudo chown -R root:root /opt/speedbox
 cd /opt/speedbox
 ```
