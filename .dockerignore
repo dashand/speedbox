@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+docs/
+config/.secret_key
+config/ftp_config.json
+results/*.json
+*.md
+LICENSE
+speedbox.service
+install.sh
+Dockerfile
+.dockerignore
