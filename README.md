@@ -33,7 +33,7 @@
 sudo apt install iperf3 mtr traceroute ethtool dnsutils python3 python3-venv
 
 # 2. Cloner le depot / Clone the repository
-sudo git clone https://github.com/OWNER/speedbox.git /opt/speedbox
+sudo git clone https://github.com/dashand/speedbox.git /opt/speedbox
 cd /opt/speedbox
 
 # 3. Environnement Python / Python environment

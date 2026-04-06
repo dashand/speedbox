@@ -52,11 +52,10 @@ sudo apt install -y iperf3 mtr traceroute ethtool dnsutils python3 python3-venv 
 Cloner le depot SpeedBox dans `/opt/speedbox` :
 
 ```bash
-sudo git clone https://github.com/OWNER/speedbox.git /opt/speedbox
+sudo git clone https://github.com/dashand/speedbox.git /opt/speedbox
 cd /opt/speedbox
 ```
 
-> **Note** : Remplacer `OWNER` par le nom d'utilisateur ou l'organisation GitHub qui heberge le projet.
 
 Verifier que les fichiers sont bien presents :
 
