@@ -311,3 +311,27 @@ If you change the IP address via the Network page and lose access:
 - If behind a reverse proxy, ensure the `Upgrade` and `Connection` headers are forwarded
 - Check browser console (F12) for WebSocket errors
 - Verify that `cors_allowed_origins='*'` in app.py is not being restricted by proxy settings
+
+---
+
+## Long-term stability — Daily reboot
+
+On Raspberry Pi, continuous operation can lead to gradual performance degradation (memory fragmentation, process accumulation). A daily automatic reboot helps maintain system stability.
+
+### Setup
+
+Edit the root crontab:
+
+```bash
+sudo crontab -e
+```
+
+Add the following line to reboot every day at 4:00 AM:
+
+```
+0 4 * * * /sbin/reboot
+```
+
+The SpeedBox service will automatically restart after the reboot thanks to the `Restart=always` parameter in `speedbox.service`.
+
+> **Note**: Choose an off-peak time appropriate for your usage. The reboot takes approximately 30 seconds.

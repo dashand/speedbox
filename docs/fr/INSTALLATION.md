@@ -380,3 +380,27 @@ Causes frequentes :
 - Verifier les headers Upgrade dans la configuration nginx (voir section 8)
 - Verifier que `proxy_read_timeout` est suffisant
 - Verifier les logs nginx : `sudo tail -f /var/log/nginx/error.log`
+
+---
+
+## Stabilite long terme — Reboot quotidien
+
+Sur Raspberry Pi, une utilisation continue peut entrainer une degradation progressive des performances (fragmentation memoire, accumulation de processus). Un reboot quotidien automatique permet de maintenir la stabilite du systeme.
+
+### Mise en place
+
+Editer le crontab root :
+
+```bash
+sudo crontab -e
+```
+
+Ajouter la ligne suivante pour un reboot tous les jours a 4h00 :
+
+```
+0 4 * * * /sbin/reboot
+```
+
+Le service SpeedBox redemarrera automatiquement apres le reboot grace au parametre `Restart=always` du fichier `speedbox.service`.
+
+> **Note** : Choisir une heure creuse adaptee a votre usage. Le reboot dure environ 30 secondes.

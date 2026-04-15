@@ -32,12 +32,12 @@ if ! command -v apt &> /dev/null; then
     exit 1
 fi
 
-echo -e "${CYAN}[1/6]${NC} Installation des paquets systeme..."
+echo -e "${CYAN}[1/7]${NC} Installation des paquets systeme..."
 apt update -qq
 apt install -y -qq iperf3 mtr traceroute ethtool dnsutils python3 python3-venv git > /dev/null 2>&1
 echo -e "${GREEN}  OK${NC}"
 
-echo -e "${CYAN}[2/6]${NC} Verification du repertoire SpeedBox..."
+echo -e "${CYAN}[2/7]${NC} Verification du repertoire SpeedBox..."
 if [ -d "$INSTALL_DIR/.git" ]; then
     echo "  Mise a jour du depot existant..."
     cd "$INSTALL_DIR"
@@ -54,7 +54,7 @@ else
 fi
 echo -e "${GREEN}  OK${NC}"
 
-echo -e "${CYAN}[3/6]${NC} Creation de l'environnement Python..."
+echo -e "${CYAN}[3/7]${NC} Creation de l'environnement Python..."
 if [ ! -d "$VENV_DIR" ]; then
     python3 -m venv "$VENV_DIR"
 fi
@@ -62,17 +62,21 @@ fi
 "$VENV_DIR/bin/pip" install --quiet -r "$INSTALL_DIR/requirements.txt"
 echo -e "${GREEN}  OK${NC}"
 
-echo -e "${CYAN}[4/6]${NC} Configuration initiale..."
+echo -e "${CYAN}[4/7]${NC} Configuration initiale..."
 mkdir -p "$INSTALL_DIR/config" "$INSTALL_DIR/results"
 echo -e "${GREEN}  OK${NC}"
 
-echo -e "${CYAN}[5/6]${NC} Installation du service systemd..."
+echo -e "${CYAN}[5/7]${NC} Installation du service systemd..."
 cp "$INSTALL_DIR/speedbox.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME" > /dev/null 2>&1
 echo -e "${GREEN}  OK${NC}"
 
-echo -e "${CYAN}[6/6]${NC} Demarrage de SpeedBox..."
+echo -e "${CYAN}[6/7]${NC} Reboot quotidien (stabilite Raspberry Pi)..."
+(crontab -l 2>/dev/null | grep -q "/sbin/reboot" || (crontab -l 2>/dev/null; echo "0 4 * * * /sbin/reboot") | crontab -)
+echo -e "${GREEN}  OK${NC}"
+
+echo -e "${CYAN}[7/7]${NC} Demarrage de SpeedBox..."
 systemctl restart "$SERVICE_NAME"
 sleep 2
 
