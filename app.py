@@ -53,7 +53,8 @@ else:
     os.chmod(FERNET_KEY_FILE, 0o600)
 _fernet = Fernet(_fernet_key)
 
-socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins='*'  # No auth = no CSRF risk; restriction would break access from public IP/custom domain)
+# cors_allowed_origins='*': no auth = no CSRF risk; restriction would break public IP/custom domain access
+socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins='*')
 
 quicktest_processes = {}
 iperf3_processes = {}
