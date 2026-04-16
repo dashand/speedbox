@@ -127,8 +127,14 @@ Au premier boot :
 - Les identifiants FTP ne sont jamais inclus dans l'image
 
 ### Réseau
-- Par défaut, le Pi utilise **DHCP sur eth0**
-- L'IP peut être configurée via l'interface SpeedBox (page Réseau)
+- **Ethernet** : IP statique `192.168.0.100` (configurable dans `dietpi.txt` avant boot)
+- **WiFi** : point d'accès activé automatiquement
+  - SSID : `SpeedBox`
+  - Mot de passe : `speedbox`
+  - IP du Pi sur le réseau WiFi : `192.168.10.1`
+  - SpeedBox accessible sur `http://192.168.10.1:5000` depuis le WiFi
+  - Le portail captif redirige tout le trafic DNS vers le Pi
+  - Le Pi fait office de routeur (NAT eth0 → wlan0) : les clients WiFi ont accès à Internet via l'Ethernet du Pi
 - Le hostname par défaut est `SpeedBox`
 
 ### Mises à jour

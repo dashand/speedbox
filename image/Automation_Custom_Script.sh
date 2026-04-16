@@ -88,8 +88,107 @@ systemctl enable speedbox
 systemctl start speedbox
 echo "  OK"
 
-# 6. Reboot quotidien pour stabilite long terme
-echo "[6/6] Configuration du reboot quotidien..."
+# 6. Point d'acces WiFi
+echo "[6/7] Configuration du point d'acces WiFi..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y hostapd > /tmp/apt-hostapd.log 2>&1 || true
+
+# IP statique wlan0
+if ! grep -q 'iface wlan0' /etc/network/interfaces; then
+    cat >> /etc/network/interfaces << 'EOF'
+
+# WiFi AP
+allow-hotplug wlan0
+iface wlan0 inet static
+address 192.168.10.1
+netmask 255.255.255.0
+pre-up iw dev wlan0 set power_save off
+post-down iw dev wlan0 set power_save on
+up iptables-restore < /etc/iptables.ipv4.nat
+up ip6tables-restore < /etc/iptables.ipv6.nat
+EOF
+fi
+
+# hostapd
+cat > /etc/hostapd/hostapd.conf << 'EOF'
+interface=wlan0
+driver=nl80211
+ssid=SpeedBox
+country_code=FR
+hw_mode=g
+channel=3
+ieee80211n=0
+ieee80211ac=0
+ieee80211ax=0
+wmm_enabled=0
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=SpeedBox
+wpa=2
+wpa_passphrase=speedbox
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+EOF
+echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' > /etc/default/hostapd
+
+# dnsmasq captive portal
+cat > /etc/dnsmasq.d/hotspot.conf << 'EOF'
+interface=wlan0
+bind-interfaces
+dhcp-range=192.168.10.10,192.168.10.50,255.255.255.0,1h
+dhcp-option=3,192.168.10.1
+dhcp-option=6,192.168.10.1
+no-resolv
+address=/#/192.168.10.1
+EOF
+
+# IP forwarding
+echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/99-speedbox-forward.conf
+sysctl -w net.ipv4.ip_forward=1
+
+# iptables NAT (eth0 partage sa connexion vers wlan0)
+cat > /etc/iptables.ipv4.nat << 'EOF'
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i wlan0 -o eth0 -j ACCEPT
+COMMIT
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s 192.168.10.0/24 -o eth0 -j MASQUERADE
+COMMIT
+EOF
+cat > /etc/iptables.ipv6.nat << 'EOF'
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i wlan0 -o eth0 -j ACCEPT
+COMMIT
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -o eth0 -j MASQUERADE
+COMMIT
+EOF
+iptables-restore < /etc/iptables.ipv4.nat
+ip6tables-restore < /etc/iptables.ipv6.nat
+
+systemctl unmask hostapd
+systemctl enable hostapd dnsmasq
+systemctl start hostapd dnsmasq || true
+echo "  OK"
+
+# 7. Reboot quotidien pour stabilite long terme
+echo "[7/7] Configuration du reboot quotidien..."
 CRON_LINE="0 4 * * * /sbin/reboot"
 if ! crontab -l 2>/dev/null | grep -qF "$CRON_LINE"; then
     (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
@@ -103,7 +202,10 @@ if systemctl is-active --quiet speedbox; then
     echo ""
     echo "=========================================="
     echo "  SpeedBox installe avec succes !"
-    echo "  Acces : http://${IP}:5000"
+    echo "  Acces (Ethernet) : http://${IP}:5000"
+    echo "  Acces (WiFi)     : http://192.168.10.1:5000"
+    echo "  WiFi SSID        : SpeedBox"
+    echo "  WiFi Mot de passe: speedbox"
     echo "  Mot de passe SSH : dietpi (a changer !)"
     echo "=========================================="
 else
