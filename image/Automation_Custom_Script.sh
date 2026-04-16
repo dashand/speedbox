@@ -14,7 +14,38 @@ echo "=========================================="
 
 # 1. Installer les paquets systeme
 echo "[1/5] Installation des paquets systeme..."
-apt-get install -y -qq iperf3 mtr traceroute ethtool dnsutils python3-venv git > /dev/null 2>&1
+
+# Attendre que dpkg soit libre (DietPi peut laisser des locks apres son setup initial)
+echo "  Attente liberation dpkg..."
+WAIT=0
+while fuser /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock >/dev/null 2>&1; do
+    sleep 3
+    WAIT=$((WAIT + 3))
+    if [ $WAIT -ge 120 ]; then
+        echo "  Timeout attente dpkg, nettoyage force..."
+        break
+    fi
+done
+dpkg --configure -a 2>/dev/null || true
+
+# Installation avec retry automatique
+APT_OK=0
+for attempt in 1 2 3; do
+    if apt-get install -y iperf3 mtr traceroute ethtool dnsutils python3-venv git > /tmp/apt-install.log 2>&1; then
+        APT_OK=1
+        break
+    fi
+    echo "  Tentative $attempt/3 echouee, nettoyage et retry..."
+    rm -f /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/cache/apt/archives/lock /var/lib/apt/lists/lock
+    dpkg --configure -a 2>/dev/null || true
+    sleep 10
+done
+
+if [ $APT_OK -eq 0 ]; then
+    echo "ERREUR: Installation des paquets impossible apres 3 tentatives."
+    echo "Log apt: $(cat /tmp/apt-install.log)"
+    exit 1
+fi
 echo "  OK"
 
 # 2. Cloner le depot
