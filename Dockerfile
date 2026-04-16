@@ -41,6 +41,9 @@ COPY templates/ templates/
 # Creer les repertoires de donnees
 RUN mkdir -p config results
 
+# Volumes pour la persistance des donnees
+VOLUME ["/opt/speedbox/config", "/opt/speedbox/results"]
+
 # Port par defaut
 EXPOSE 5000
 
