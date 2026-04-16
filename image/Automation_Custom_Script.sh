@@ -40,7 +40,7 @@ dpkg --configure -a 2>/dev/null || true
 # Installation avec retry automatique
 APT_OK=0
 for attempt in 1 2 3; do
-    if apt-get install -y iperf3 mtr traceroute ethtool dnsutils python3-venv git > /tmp/apt-install.log 2>&1; then
+    if DEBIAN_FRONTEND=noninteractive apt-get install -y iperf3 mtr traceroute ethtool dnsutils python3-venv git > /tmp/apt-install.log 2>&1; then
         APT_OK=1
         break
     fi
