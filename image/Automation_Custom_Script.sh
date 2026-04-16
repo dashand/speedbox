@@ -12,8 +12,17 @@ echo "=========================================="
 echo "  SpeedBox - Installation automatique"
 echo "=========================================="
 
+# 0. Configuration systeme
+echo "[0/6] Configuration systeme..."
+localectl set-locale LANG=C.UTF-8 2>/dev/null || true
+localectl set-keymap fr 2>/dev/null || true
+timedatectl set-timezone Europe/Paris 2>/dev/null || true
+echo 'SpeedBox' > /etc/hostname
+sed -i 's/127\.0\.1\.1.*/127.0.1.1\tSpeedBox/' /etc/hosts 2>/dev/null || true
+echo "  OK"
+
 # 1. Installer les paquets systeme
-echo "[1/5] Installation des paquets systeme..."
+echo "[1/6] Installation des paquets systeme..."
 
 # Attendre que dpkg soit libre (DietPi peut laisser des locks apres son setup initial)
 echo "  Attente liberation dpkg..."
@@ -49,7 +58,7 @@ fi
 echo "  OK"
 
 # 2. Cloner le depot
-echo "[2/5] Telechargement de SpeedBox..."
+echo "[2/6] Telechargement de SpeedBox..."
 if [ -d "$INSTALL_DIR/.git" ]; then
     cd "$INSTALL_DIR"
     git pull --ff-only
@@ -59,7 +68,7 @@ fi
 echo "  OK"
 
 # 3. Environnement Python
-echo "[3/5] Installation de l'environnement Python..."
+echo "[3/6] Installation de l'environnement Python..."
 cd "$INSTALL_DIR"
 python3 -m venv venv
 venv/bin/pip install --quiet --upgrade pip
@@ -67,16 +76,24 @@ venv/bin/pip install --quiet -r requirements.txt
 echo "  OK"
 
 # 4. Configuration
-echo "[4/5] Configuration..."
+echo "[4/6] Configuration..."
 mkdir -p config results
 echo "  OK"
 
 # 5. Service systemd
-echo "[5/5] Configuration du service..."
+echo "[5/6] Configuration du service..."
 cp speedbox.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable speedbox
 systemctl start speedbox
+echo "  OK"
+
+# 6. Reboot quotidien pour stabilite long terme
+echo "[6/6] Configuration du reboot quotidien..."
+CRON_LINE="0 4 * * * /sbin/reboot"
+if ! crontab -l 2>/dev/null | grep -qF "$CRON_LINE"; then
+    (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
+fi
 echo "  OK"
 
 # Verification
@@ -87,6 +104,7 @@ if systemctl is-active --quiet speedbox; then
     echo "=========================================="
     echo "  SpeedBox installe avec succes !"
     echo "  Acces : http://${IP}:5000"
+    echo "  Mot de passe SSH : dietpi (a changer !)"
     echo "=========================================="
 else
     echo "ERREUR: SpeedBox n'a pas demarre."

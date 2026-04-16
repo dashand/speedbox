@@ -6,7 +6,7 @@
 #         bash apply-config.sh /media/user/bootfs
 #
 # Ce script est autonome : il n'a besoin d'aucun autre fichier.
-# Mot de passe par défaut : SpeedBox!  — à changer après installation : passwd
+# Toute la configuration (locale, timezone, hostname) est gérée au premier boot.
 # =============================================================================
 
 set -e
@@ -31,20 +31,8 @@ echo "============================================"
 
 echo "[1/2] Application des paramètres dans dietpi.txt..."
 
-sed -i 's/^AUTO_SETUP_GLOBAL_PASSWORD=.*/AUTO_SETUP_GLOBAL_PASSWORD=SpeedBox!/'      "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_LOCALE=.*/AUTO_SETUP_LOCALE=C.UTF-8/'                          "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_KEYBOARD_LAYOUT=.*/AUTO_SETUP_KEYBOARD_LAYOUT=fr/'             "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_TIMEZONE=.*/AUTO_SETUP_TIMEZONE=Europe\/Paris/'                "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_NET_ETHERNET_ENABLED=.*/AUTO_SETUP_NET_ETHERNET_ENABLED=1/'    "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_NET_WIFI_ENABLED=.*/AUTO_SETUP_NET_WIFI_ENABLED=0/'            "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_NET_HOSTNAME=.*/AUTO_SETUP_NET_HOSTNAME=SpeedBox/'             "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_BOOT_WAIT_FOR_NETWORK=.*/AUTO_SETUP_BOOT_WAIT_FOR_NETWORK=1/'  "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_AUTOMATED=.*/AUTO_SETUP_AUTOMATED=1/'                          "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_CUSTOM_SCRIPT_EXEC=.*/AUTO_SETUP_CUSTOM_SCRIPT_EXEC=1/'        "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_AUTOSTART_TARGET_INDEX=.*/AUTO_SETUP_AUTOSTART_TARGET_INDEX=7/' "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_AUTOSTART_LOGIN_USER=.*/AUTO_SETUP_AUTOSTART_LOGIN_USER=root/' "$BOOT_DIR/dietpi.txt"
-sed -i 's/^AUTO_SETUP_SSH_SERVER_INDEX=.*/AUTO_SETUP_SSH_SERVER_INDEX=-1/'           "$BOOT_DIR/dietpi.txt"
-sed -i 's/^SURVEY_OPTED_IN=.*/SURVEY_OPTED_IN=0/'                                    "$BOOT_DIR/dietpi.txt"
+sed -i 's/^AUTO_SETUP_AUTOMATED=.*/AUTO_SETUP_AUTOMATED=1/'             "$BOOT_DIR/dietpi.txt"
+sed -i 's/^AUTO_SETUP_CUSTOM_SCRIPT_EXEC=.*/AUTO_SETUP_CUSTOM_SCRIPT_EXEC=1/' "$BOOT_DIR/dietpi.txt"
 
 echo "  OK"
 
@@ -65,8 +53,17 @@ echo "=========================================="
 echo "  SpeedBox - Installation automatique"
 echo "=========================================="
 
+# 0. Configuration systeme
+echo "[0/6] Configuration systeme..."
+localectl set-locale LANG=C.UTF-8 2>/dev/null || true
+localectl set-keymap fr 2>/dev/null || true
+timedatectl set-timezone Europe/Paris 2>/dev/null || true
+echo 'SpeedBox' > /etc/hostname
+sed -i 's/127\.0\.1\.1.*/127.0.1.1\tSpeedBox/' /etc/hosts 2>/dev/null || true
+echo "  OK"
+
 # 1. Installer les paquets systeme
-echo "[1/5] Installation des paquets systeme..."
+echo "[1/6] Installation des paquets systeme..."
 
 # Attendre que dpkg soit libre (DietPi peut laisser des locks apres son setup initial)
 echo "  Attente liberation dpkg..."
@@ -102,7 +99,7 @@ fi
 echo "  OK"
 
 # 2. Cloner le depot
-echo "[2/5] Telechargement de SpeedBox..."
+echo "[2/6] Telechargement de SpeedBox..."
 if [ -d "$INSTALL_DIR/.git" ]; then
     cd "$INSTALL_DIR"
     git pull --ff-only
@@ -112,7 +109,7 @@ fi
 echo "  OK"
 
 # 3. Environnement Python
-echo "[3/5] Installation de l'environnement Python..."
+echo "[3/6] Installation de l'environnement Python..."
 cd "$INSTALL_DIR"
 python3 -m venv venv
 venv/bin/pip install --quiet --upgrade pip
@@ -120,16 +117,24 @@ venv/bin/pip install --quiet -r requirements.txt
 echo "  OK"
 
 # 4. Configuration
-echo "[4/5] Configuration..."
+echo "[4/6] Configuration..."
 mkdir -p config results
 echo "  OK"
 
 # 5. Service systemd
-echo "[5/5] Configuration du service..."
+echo "[5/6] Configuration du service..."
 cp speedbox.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable speedbox
 systemctl start speedbox
+echo "  OK"
+
+# 6. Reboot quotidien pour stabilite long terme
+echo "[6/6] Configuration du reboot quotidien..."
+CRON_LINE="0 4 * * * /sbin/reboot"
+if ! crontab -l 2>/dev/null | grep -qF "$CRON_LINE"; then
+    (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
+fi
 echo "  OK"
 
 # Verification
@@ -140,6 +145,7 @@ if systemctl is-active --quiet speedbox; then
     echo "=========================================="
     echo "  SpeedBox installe avec succes !"
     echo "  Acces : http://${IP}:5000"
+    echo "  Mot de passe SSH : dietpi (a changer !)"
     echo "=========================================="
 else
     echo "ERREUR: SpeedBox n'a pas demarre."
@@ -155,11 +161,9 @@ echo ""
 echo "============================================"
 echo "  Configuration terminée !"
 echo ""
-echo "  Mot de passe par défaut : SpeedBox!"
-echo "  >> Changez-le après installation : passwd"
-echo ""
 echo "  Éjectez la carte SD, insérez-la dans le"
 echo "  Raspberry Pi et démarrez."
 echo "  SpeedBox sera accessible sur http://<IP>:5000"
 echo "  (~5-10 min au premier boot)"
+echo "  Mot de passe SSH par défaut : dietpi"
 echo "============================================"
