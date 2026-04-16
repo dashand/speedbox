@@ -40,7 +40,7 @@ dpkg --configure -a 2>/dev/null || true
 # Installation avec retry automatique
 APT_OK=0
 for attempt in 1 2 3; do
-    if DEBIAN_FRONTEND=noninteractive apt-get install -y iperf3 mtr traceroute ethtool dnsutils python3-venv git > /tmp/apt-install.log 2>&1; then
+    if DEBIAN_FRONTEND=noninteractive apt-get install -y iperf3 mtr traceroute ethtool dnsutils python3-venv git hostapd dnsmasq iptables > /tmp/apt-install.log 2>&1; then
         APT_OK=1
         break
     fi
@@ -90,11 +90,14 @@ echo "  OK"
 
 # 6. Point d'acces WiFi
 echo "[6/7] Configuration du point d'acces WiFi..."
-DEBIAN_FRONTEND=noninteractive apt-get install -y hostapd > /tmp/apt-hostapd.log 2>&1 || true
 
-# IP statique wlan0
-if ! grep -q 'iface wlan0' /etc/network/interfaces; then
-    cat >> /etc/network/interfaces << 'EOF'
+# Remplacer la config wlan0 de DietPi (station) par la config AP
+# Supprimer tout bloc iface wlan0 existant et les lignes associees
+sed -i '/^# WiFi/,/^$/{ /allow-hotplug wlan0/d; /iface wlan0/d; /address 192\.168\.0\./d; /netmask/d; /gateway/d; /dns-nameservers/d; /wireless-power/d; /wpa-conf/d; /pre-up.*wlan0/d; /post-down.*wlan0/d; /up iptables/d; /up ip6tables/d }' /etc/network/interfaces
+sed -i '/^#allow-hotplug wlan0/d; /^allow-hotplug wlan0/d' /etc/network/interfaces
+
+# Ajouter la config AP
+cat >> /etc/network/interfaces << 'EOF'
 
 # WiFi AP
 allow-hotplug wlan0
@@ -106,7 +109,6 @@ post-down iw dev wlan0 set power_save on
 up iptables-restore < /etc/iptables.ipv4.nat
 up ip6tables-restore < /etc/iptables.ipv6.nat
 EOF
-fi
 
 # hostapd
 cat > /etc/hostapd/hostapd.conf << 'EOF'
@@ -132,6 +134,7 @@ EOF
 echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' > /etc/default/hostapd
 
 # dnsmasq captive portal
+mkdir -p /etc/dnsmasq.d
 cat > /etc/dnsmasq.d/hotspot.conf << 'EOF'
 interface=wlan0
 bind-interfaces
@@ -182,9 +185,12 @@ EOF
 iptables-restore < /etc/iptables.ipv4.nat
 ip6tables-restore < /etc/iptables.ipv6.nat
 
-systemctl unmask hostapd
-systemctl enable hostapd dnsmasq
-systemctl start hostapd dnsmasq || true
+systemctl unmask hostapd 2>/dev/null || true
+systemctl enable hostapd
+systemctl enable dnsmasq 2>/dev/null || true
+ifup wlan0 2>/dev/null || true
+systemctl restart hostapd || true
+systemctl restart dnsmasq || true
 echo "  OK"
 
 # 7. Reboot quotidien pour stabilite long terme
