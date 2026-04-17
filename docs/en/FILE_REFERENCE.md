@@ -6,7 +6,7 @@ This document describes every file in the SpeedBox project, its purpose, and its
 
 ## app.py
 
-**Lines:** ~1392
+**Lines:** ~1434
 **Purpose:** Main Flask application. Contains all backend logic: HTTP routes, REST API endpoints, WebSocket handlers, utility functions, and process management.
 
 ### Imports and Initialization (lines 1-48)
@@ -413,5 +413,53 @@ requests==2.33.1
 
 ## README.md
 
-**Lines:** ~100
-**Purpose:** Project overview, features, installation instructions, and license information.
+**Lines:** ~150
+**Purpose:** Project overview, features, three installation options (pre-built DietPi image, Docker, manual), and license information.
+
+---
+
+## Dockerfile
+
+**Purpose:** Docker image definition for SpeedBox.
+
+**Key details:**
+- Base image: `python:3.13-slim-bookworm`
+- Network tools installed: `iperf3`, `mtr-tiny`, `traceroute`, `ethtool`, `dnsutils`, `iproute2`, `net-tools`, `procps`
+- `VOLUME` declarations: `/opt/speedbox/config` and `/opt/speedbox/results` (data persistence)
+- `EXPOSE 5000`
+- `HEALTHCHECK` via `curl http://localhost:5000/api/status`
+- Entrypoint: `python app.py`
+
+## docker-compose.yml
+
+**Purpose:** One-command deployment via Docker Compose.
+
+**Key settings:**
+- `network_mode: host` — direct access to host network interfaces
+- `privileged: true` — required to read network interfaces and run system tools
+- Named volumes `speedbox-config` and `speedbox-results` for persistence
+
+## .github/workflows/docker-publish.yml
+
+**Purpose:** GitHub Actions CI/CD — automated Docker image build and publish.
+
+**Triggers:** push to `main` and `v*.*.*` tags
+
+**Steps:**
+1. Checkout
+2. QEMU (multi-arch emulation)
+3. Docker Buildx
+4. Login to GHCR (via `GITHUB_TOKEN`) and Docker Hub (via `DOCKERHUB_TOKEN` secret)
+5. Metadata generation (tags: `latest`, branch, semver)
+6. Multi-arch build and push: `linux/amd64` + `linux/arm64`
+7. Docker Hub description update (non-blocking)
+
+**Published images:**
+- `ghcr.io/dashand/speedbox`
+- `seblalanne/speedbox` (Docker Hub)
+
+## README.docker.md
+
+**Purpose:** Bilingual (FR/EN) Docker-specific documentation, also used as Docker Hub overview.
+
+**Contents:** quick start, `docker-compose.yml`, environment variables, volumes, supported platforms table.

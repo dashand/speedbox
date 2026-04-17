@@ -47,12 +47,12 @@ Cette méthode clone une installation existante et fonctionnelle pour créer une
 ### Prérequis
 
 - Un Raspberry Pi 5 avec SpeedBox installé et fonctionnel
-- Un PC Linux (ou un 2e Pi) avec `pishrink.sh`
 - Un lecteur de carte SD USB
+- PC Windows (méthode A) ou PC Linux natif (méthode B — **recommandée** si disponible)
 
 ### Étape 1 : Préparer le Pi source
 
-Nettoyer l'installation avant de cloner :
+Nettoyer l'installation avant de cloner via SSH :
 
 ```bash
 # Supprimer les résultats de test
@@ -75,45 +75,73 @@ rm -f /var/tmp/dietpi/logs/*.log
 sudo shutdown -h now
 ```
 
-### Étape 2 : Cloner la carte SD
+### Étape 2 (Méthode A — Windows) : Cloner et compresser
 
-Sur un PC Linux, insérer la carte SD du Pi et la cloner :
+Les partitions Linux ne sont pas accessibles par Windows directement. Il faut passer par la lecture brute du disque physique.
+
+**2a. Libérer le disque avec diskpart** (PowerShell admin) :
+
+```
+diskpart
+list disk
+select disk N        ← numéro du lecteur SD
+offline disk
+exit
+```
+
+**2b. Lire le disque brut avec PowerShell** (admin) — remplacer `N` par le numéro de disque et `SIZE` par la taille en octets :
+
+```powershell
+$src  = [System.IO.File]::OpenRead('\\.\PhysicalDriveN')
+$dst  = [System.IO.File]::OpenWrite('C:\speedbox-vX.Y.Z.img')
+$buf  = New-Object byte[] (4MB)
+$read = 0
+while (($n = $src.Read($buf, 0, $buf.Length)) -gt 0) {
+    $dst.Write($buf, 0, $n)
+    $read += $n
+    Write-Progress -Activity "dd" -Status "$([math]::Round($read/1GB,2)) Go"
+}
+$src.Close(); $dst.Close()
+```
+
+**2c. Compresser dans WSL2** :
+
+```bash
+gzip -9 --keep speedbox-vX.Y.Z.img
+```
+
+> **Note** : PiShrink n'est pas utilisable dans WSL2 (loop devices non supportés). L'image résultante a la taille complète de la carte SD (compressée ~640 Mo pour 16 Go). Une carte SD ≥ 16 Go est requise pour flasher.
+
+### Étape 2 (Méthode B — Linux natif) : Cloner, réduire et compresser
 
 ```bash
 # Identifier le device (ex: /dev/sdb)
 lsblk
 
-# Cloner la carte SD (ATTENTION au device !)
-sudo dd if=/dev/sdb of=speedbox-v1.0.0.img bs=4M status=progress
-```
+# Cloner la carte SD
+sudo dd if=/dev/sdb of=speedbox-vX.Y.Z.img bs=4M status=progress
 
-### Étape 3 : Réduire l'image avec PiShrink
-
-```bash
-# Installer pishrink si pas déjà fait
+# Réduire avec PiShrink (supprime l'espace vide, active l'expansion au boot)
 wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
-chmod +x pishrink.sh
-sudo mv pishrink.sh /usr/local/bin/
-
-# Réduire l'image (supprime l'espace vide, active l'expansion auto au boot)
-sudo pishrink.sh -z speedbox-v1.0.0.img
+chmod +x pishrink.sh && sudo mv pishrink.sh /usr/local/bin/
+sudo pishrink.sh -z speedbox-vX.Y.Z.img
 ```
 
-Résultat : `speedbox-v1.0.0.img.gz` (~1-2 Go au lieu de 16-32 Go)
+Résultat : `speedbox-vX.Y.Z.img.gz` (~300-500 Mo, flashable sur carte ≥ 8 Go)
 
-### Étape 4 : Flasher l'image
+### Étape 3 : Flasher l'image
 
 ```bash
-# Avec dd
-gunzip -c speedbox-v1.0.0.img.gz | sudo dd of=/dev/sdX bs=4M status=progress
+# Avec dd (Linux/Mac)
+gunzip -c speedbox-vX.Y.Z.img.gz | sudo dd of=/dev/sdX bs=4M status=progress
 
-# Ou avec balenaEtcher (interface graphique)
+# Ou avec balenaEtcher (interface graphique, Windows/Mac/Linux)
 ```
 
-### Étape 5 : Premier démarrage
+### Étape 4 : Premier démarrage
 
 Au premier boot :
-- La partition s'étend automatiquement (grâce à PiShrink)
+- Si créée avec PiShrink : la partition s'étend automatiquement
 - Les clés secrètes Flask et Fernet sont régénérées automatiquement
 - SpeedBox est immédiatement accessible sur `http://<IP>:5000`
 

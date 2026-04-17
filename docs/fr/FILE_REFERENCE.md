@@ -6,7 +6,7 @@ Ce document decrit chaque fichier du projet SpeedBox, son role, et son contenu p
 
 ## Fichiers serveur
 
-### app.py (~1389 lignes)
+### app.py (~1434 lignes)
 
 **Role** : Application principale Flask. Contient toute la logique serveur : routes HTTP, handlers WebSocket, fonctions utilitaires, gestion des processus.
 
@@ -249,6 +249,56 @@ Mis a jour via `/api/public-servers/update`. Evite de requeter le site externe a
 - Permissions : `chmod 600`
 - Exclue du depot Git via `.gitignore`
 - Le mot de passe est encode en base64
+
+---
+
+## Fichiers Docker
+
+### Dockerfile
+
+**Role** : Définition de l'image Docker SpeedBox.
+
+**Contenu** :
+- Image de base : `python:3.13-slim-bookworm`
+- Outils réseau installés : `iperf3`, `mtr-tiny`, `traceroute`, `ethtool`, `dnsutils`, `iproute2`, `net-tools`, `procps`
+- `VOLUME` déclarés : `/opt/speedbox/config` et `/opt/speedbox/results` (persistance des données)
+- `EXPOSE 5000`
+- `HEALTHCHECK` via `curl http://localhost:5000/api/status`
+- Entrypoint : `python app.py`
+
+### docker-compose.yml
+
+**Role** : Déploiement one-command de SpeedBox via Docker Compose.
+
+**Contenu** :
+- `network_mode: host` : accès direct aux interfaces réseau de la machine hôte
+- `privileged: true` : nécessaire pour lire les interfaces réseau et exécuter les outils systeme
+- Volumes nommés `speedbox-config` et `speedbox-results` pour la persistance
+
+### .github/workflows/docker-publish.yml
+
+**Role** : CI/CD GitHub Actions — build et publication automatique de l'image Docker.
+
+**Déclencheurs** : push sur `main` et tags `v*.*.*`
+
+**Étapes** :
+1. Checkout du code
+2. QEMU (émulation multi-arch)
+3. Docker Buildx
+4. Login GHCR (via `GITHUB_TOKEN`) et Docker Hub (via secret `DOCKERHUB_TOKEN`)
+5. Génération des métadonnées (tags `latest`, branche, version sémantique)
+6. Build et push multi-arch : `linux/amd64` + `linux/arm64`
+7. Mise à jour de la description Docker Hub (non bloquant)
+
+**Images publiées** :
+- `ghcr.io/dashand/speedbox`
+- `seblalanne/speedbox` (Docker Hub)
+
+### README.docker.md
+
+**Role** : Documentation bilingue (FR/EN) spécifique au déploiement Docker, destinée à Docker Hub.
+
+**Contenu** : démarrage rapide, `docker-compose.yml`, variables d'environnement, volumes, plateformes supportées.
 
 ---
 

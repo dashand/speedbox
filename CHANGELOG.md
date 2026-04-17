@@ -6,6 +6,37 @@ Toutes les modifications notables de SpeedBox sont documentees ici.
 
 ---
 
+## v1.1.0 — DietPi Image + Docker (2026-04-16)
+
+### Nouveau / New
+
+**Image DietPi pré-construite / Pre-built DietPi image**
+- Image `.img.gz` prête à flasher, publiée sur GitHub Releases
+- Installation 100% automatique au premier boot via `Automation_Custom_Script.sh`
+- Durée du premier boot : ~5 minutes
+
+**Point d'accès WiFi / WiFi Access Point**
+- SSID : `SpeedBox`, mot de passe : `speedbox`, canal 3, région FR
+- IP du Pi sur le réseau WiFi : `192.168.10.1`
+- Portail captif : ouverture automatique du navigateur sur iOS, Android et Windows
+- Partage de connexion : NAT eth0 → wlan0 (les clients WiFi ont Internet via l'Ethernet du Pi)
+
+**Support Docker / Docker support**
+- `Dockerfile` : image Python 3.13 slim avec tous les outils réseau
+- `docker-compose.yml` : déploiement one-command
+- Build multi-architecture : `linux/amd64` et `linux/arm64`
+- Images publiées sur Docker Hub (`seblalanne/speedbox`) et GitHub Container Registry (`ghcr.io/dashand/speedbox`)
+- CI/CD GitHub Actions : build et push automatiques sur push `main` et tags `v*.*.*`
+
+### Améliorations / Improvements
+
+- Détection automatique de l'interface réseau principale (`eth0` sur Pi, `ens*` sur VM, configurable via `ETH_INTERFACE`)
+- Interface WiFi absente → affiche "Non détecté" / "Not detected" (i18n) au lieu d'une erreur
+- README mis à jour avec les 3 options d'installation (image DietPi, Docker, manuel)
+- Documentation Docker bilingue (`README.docker.md`)
+
+---
+
 ## v1.0.0 -- Initial Open Source Release (2026-04-06)
 
 ### Fonctionnalites / Features
