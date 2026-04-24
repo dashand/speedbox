@@ -1358,7 +1358,8 @@ def handle_quicktest(data):
 
                     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                     test_result['timestamp'] = datetime.now().isoformat()
-                    filename = f"iperf3_{step['protocol']}_{timestamp}_step{step_num}.json"
+                    safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', test_name)
+                    filename = f"{safe_name}_iperf3_{step['protocol']}_{timestamp}_step{step_num}.json"
                     filepath = os.path.join(RESULTS_DIR, filename)
                     with open(filepath, 'w') as rf:
                         json.dump(test_result, rf, indent=2)
